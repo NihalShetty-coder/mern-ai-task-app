@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/aitasks
+      - JWT_SECRET=dev_secret
+      - JWT_EXPIRES_IN=7d
+      - REDIS_URL=redis://redis:6379
+      - REDIS_STREAM=task_stream
+      - REDIS_CONSUMER_GROUP=workers
+      - REDIS_CONSUMER_NAME=api
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+      - redis
+
+  worker:
+    build:
+      context: ./worker
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/aitasks
+      - REDIS_URL=redis://redis:6379
+      - REDIS_STREAM=task_stream
+      - REDIS_CONSUMER_GROUP=workers
+      - REDIS_CONSUMER_NAME=worker-1
+    depends_on:
+      - mongo
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
