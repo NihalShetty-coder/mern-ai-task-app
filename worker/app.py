@@ -75,7 +75,10 @@ def process_message(message_id, fields):
     })
     append_log(task_id, f"Failed: {exc}")
 
-def run():
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+def run_worker():
   ensure_group()
   while True:
     try:
@@ -96,5 +99,23 @@ def run():
       print(f"Worker error: {exc}")
       time.sleep(3)
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Worker is alive!")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    print(f"Dummy web server listening on port {port}")
+    server.serve_forever()
+
 if __name__ == "__main__":
-  run()
+  # Run the Redis worker in a background thread
+  worker_thread = threading.Thread(target=run_worker, daemon=True)
+  worker_thread.start()
+  
+  # Run the dummy web server on the main thread so Render doesn't crash us
+  run_server()
