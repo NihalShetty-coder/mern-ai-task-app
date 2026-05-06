@@ -20,7 +20,11 @@ if not REDIS_URL or not MONGO_URI:
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 mongo = MongoClient(MONGO_URI)
-db = mongo.get_default_database()
+# Fallback to 'aitasks' if database name is not in the URI
+try:
+    db = mongo.get_default_database()
+except Exception:
+    db = mongo["aitasks"]
 tasks = db.tasks
 
 def ensure_group():
