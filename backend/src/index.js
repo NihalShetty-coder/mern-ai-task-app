@@ -18,9 +18,13 @@ app.use(morgan("tiny"));
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: 1000,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    message: { message: "Too many requests, please try again later." },
+    handler: (req, res) => {
+      res.status(429).json({ message: "Too many requests, please try again later." });
+    }
   })
 );
 
