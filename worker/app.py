@@ -23,8 +23,19 @@ CONSUMER_NAME = os.getenv("REDIS_CONSUMER_NAME", "worker-1")
 if not REDIS_URL or not MONGO_URI:
   raise RuntimeError("Missing REDIS_URL or MONGO_URI")
 
+def build_mongo_uri(base, db):
+  parts = base.split("?")
+  host_part = parts[0]
+  query = parts[1] if len(parts) > 1 else ""
+  params = query.split("&") if query else []
+  filtered = [p for p in params if not p.startswith("retryWrites") and not p.startswith("w=")]
+  filtered.append("retryWrites=true")
+  filtered.append("w=majority")
+  query_str = "&".join(filtered)
+  return host_part + "/" + db + ("?" + query_str if query_str else "")
+
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
-mongo_uri = MONGO_URI.split("?")[0] + "/test?retryWrites=true&w=majority"
+mongo_uri = build_mongo_uri(MONGO_URI, "test")
 logging.info(f"Attempting to connect to MongoDB: {mongo_uri[:60]}...")
 
 try:
