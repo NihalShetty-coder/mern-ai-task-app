@@ -24,15 +24,15 @@ if not REDIS_URL or not MONGO_URI:
   raise RuntimeError("Missing REDIS_URL or MONGO_URI")
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
-mongo_uri = MONGO_URI.split("?")[0] + "/aitasks?retryWrites=true&w=majority"
+mongo_uri = MONGO_URI.split("?")[0] + "/test?retryWrites=true&w=majority"
 logging.info(f"Attempting to connect to MongoDB: {mongo_uri[:60]}...")
 
 try:
     mongo = MongoClient(mongo_uri, serverSelectionTimeoutMS=10000)
     mongo.admin.command("ping")
-    db = mongo["aitasks"]
+    db = mongo["test"]
     tasks = db.tasks
-    logging.info("MongoDB connected successfully! Collection: aitasks.tasks")
+    logging.info("MongoDB connected successfully! Collection: test.tasks")
 except Exception as exc:
     logging.info(f"MongoDB connection failed: {exc}")
     raise
