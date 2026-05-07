@@ -15,24 +15,23 @@ app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("tiny"));
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Too many requests, please try again later." },
-    handler: (req, res) => {
-      res.status(429).json({ message: "Too many requests, please try again later." });
-    }
-  })
-);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+  handler: (req, res) => {
+    res.status(429).json({ message: "Too many requests, please try again later." });
+  }
+});
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/auth", authRoutes);
+app.use("/auth", authLimiter, authRoutes);
 app.use("/tasks", taskRoutes);
 
 app.use(errorHandler);
