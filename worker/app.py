@@ -19,13 +19,17 @@ if not REDIS_URL or not MONGO_URI:
   raise RuntimeError("Missing REDIS_URL or MONGO_URI")
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
-mongo = MongoClient(MONGO_URI)
-# Fallback to 'aitasks' if database name is not in the URI
+logging.info(f"Attempting to connect to MongoDB: {MONGO_URI[:50]}...")
+
 try:
-    db = mongo.get_default_database()
-except Exception:
+    mongo = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    mongo.admin.command("ping")
     db = mongo["aitasks"]
-tasks = db.tasks
+    tasks = db.tasks
+    logging.info("MongoDB connected successfully! Collection: aitasks.tasks")
+except Exception as exc:
+    logging.info(f"MongoDB connection failed: {exc}")
+    raise
 
 def ensure_group():
   try:
