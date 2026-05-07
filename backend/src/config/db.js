@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import { env } from "./env.js";
 
-function buildMongoUri(base, db) {
-  if (base.includes("+srv")) {
-    return base.split("?")[0] + "/" + db + "?retryWrites=true&w=majority";
-  }
-  return base.split("?")[0] + "/" + db + "?retryWrites=true&w=majority";
+function buildMongoUri(rawUri, dbName) {
+  const [base, query] = rawUri.split('?');
+  // Remove trailing slash from base to avoid double slashes
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const newUri = `${cleanBase}/${dbName}`;
+  return query ? `${newUri}?${query}` : newUri;
 }
 
 export async function connectDb() {

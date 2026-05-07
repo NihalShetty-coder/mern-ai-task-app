@@ -21,24 +21,31 @@ CONSUMER_GROUP = os.getenv("REDIS_CONSUMER_GROUP", "workers")
 CONSUMER_NAME = os.getenv("REDIS_CONSUMER_NAME", "worker-1")
 
 if not REDIS_URL or not MONGO_URI:
-  raise RuntimeError("Missing REDIS_URL or MONGO_URI")
+    raise RuntimeError("Missing REDIS_URL or MONGO_URI")
 
 def build_mongo_uri(raw_uri, db_name):
-  base = raw_uri.split("?")[0]
-  return base + "/" + db_name
+    parts = raw_uri.split('?')
+    base = parts[0]
+    # Remove trailing slash to avoid //db_name
+    if base.endswith('/'):
+        base = base[:-1]
+    new_uri = f"{base}/{db_name}"
+    if len(parts) > 1:
+        new_uri += f"?{parts[1]}"
+    return new_uri
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 mongo_uri = build_mongo_uri(MONGO_URI, "test")
-logging.info("Worker MongoDB URI: %s", mongo_uri[:70])
+logging.info(f"Worker MongoDB URI: {mongo_uri[:70]}")
 
 try:
     mongo = MongoClient(mongo_uri, serverSelectionTimeoutMS=10000)
     mongo.admin.command("ping")
     db = mongo["test"]
     tasks = db.tasks
-    logging.info("Worker connected to MongoDB test.tasks successfully")
+    logging.info("Worker connected to MongoDB test.tasks")
 except Exception as exc:
-    logging.info("Worker MongoDB connection failed: %s", exc)
+    logging.info(f"Worker MongoDB connection failed: {exc}")
     raise
 
 def ensure_group():
@@ -73,7 +80,7 @@ def process_message(message_id, fields):
   if not task_id:
     return
 
-  logging.info("Processing task: %s", task_id)
+  logging.info(f"Processing task: {task_id}")
   append_log(task_id, f"Started at {datetime.utcnow().isoformat()}Z")
   update_task(task_id, {"status": "running", "error": ""})
 
@@ -86,9 +93,9 @@ def process_message(message_id, fields):
       "updatedAt": datetime.utcnow()
     })
     append_log(task_id, "Completed successfully")
-    logging.info("Task %s completed: %s", task_id, result)
+    logging.info(f"Task {task_id} completed: {result}")
   except Exception as exc:
-    logging.info("Task %s failed: %s", task_id, exc)
+    logging.info(f"Task {task_id} failed: {exc}")
     update_task(task_id, {
       "status": "failed",
       "error": str(exc),
@@ -122,17 +129,17 @@ def run_worker():
         continue
       for _, messages in resp:
         for message_id, fields in messages:
-          logging.info("Received task: %s", message_id)
+          logging.info(f"Received task: {message_id}")
           process_message(message_id, fields)
           redis.xack(REDIS_STREAM, CONSUMER_GROUP, message_id)
     except Exception as exc:
-      logging.info("Worker error: %s", exc)
+      logging.info(f"Worker error: {exc}")
       time.sleep(3)
 
 def run_server():
     port = int(os.getenv("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), HealthHandler)
-    logging.info("Dummy web server listening on port %d", port)
+    logging.info(f"Dummy web server listening on port {port}")
     server.serve_forever()
 
 if __name__ == "__main__":
