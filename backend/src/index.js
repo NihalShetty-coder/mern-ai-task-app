@@ -9,6 +9,14 @@ import authRoutes from "./routes/auth.js";
 import taskRoutes from "./routes/tasks.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+});
+
 const app = express();
 
 app.use(helmet());
@@ -36,8 +44,19 @@ app.use("/tasks", taskRoutes);
 
 app.use(errorHandler);
 
-await connectDb();
+const port = env.port;
+let server;
 
-app.listen(env.port, () => {
-  console.log(`API listening on ${env.port}`);
-});
+async function startServer() {
+  try {
+    await connectDb();
+    server = app.listen(port, () => {
+      console.log(`API listening on ${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
+}
+
+startServer();
