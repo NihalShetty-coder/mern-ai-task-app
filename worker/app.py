@@ -24,10 +24,11 @@ if not REDIS_URL or not MONGO_URI:
   raise RuntimeError("Missing REDIS_URL or MONGO_URI")
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
-logging.info(f"Attempting to connect to MongoDB: {MONGO_URI[:50]}...")
+mongo_uri = MONGO_URI.split("?")[0] + "/aitasks?retryWrites=true&w=majority"
+logging.info(f"Attempting to connect to MongoDB: {mongo_uri[:60]}...")
 
 try:
-    mongo = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    mongo = MongoClient(mongo_uri, serverSelectionTimeoutMS=10000)
     mongo.admin.command("ping")
     db = mongo["aitasks"]
     tasks = db.tasks
@@ -91,9 +92,14 @@ def process_message(message_id, fields):
     })
     append_log(task_id, f"Failed: {exc}")
 
-class HealthCheckHandler:
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        return "ok"
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Worker is alive!")
 
 def run_worker():
   logging.info("Worker thread started. Connecting to Redis...")
@@ -118,15 +124,6 @@ def run_worker():
     except Exception as exc:
       logging.info(f"Worker error: {exc}")
       time.sleep(3)
-
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"Worker is alive!")
 
 def run_server():
     port = int(os.getenv("PORT", 10000))
