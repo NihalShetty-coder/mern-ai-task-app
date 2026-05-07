@@ -67,7 +67,9 @@ def compute(operation, input_text):
   raise ValueError(f"Unsupported operation: {operation}")
 
 def update_task(task_id, data):
-  tasks.update_one({"_id": ObjectId(task_id)}, {"$set": data})
+  logging.info(f"Updating task {task_id} with {data}")
+  result = tasks.update_one({"_id": ObjectId(task_id)}, {"$set": data})
+  logging.info(f"Update result: matched={result.matched_count}, modified={result.modified_count}")
 
 def append_log(task_id, message):
   tasks.update_one({"_id": ObjectId(task_id)}, {"$push": {"logs": message}})

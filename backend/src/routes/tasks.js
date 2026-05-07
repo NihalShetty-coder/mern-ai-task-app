@@ -44,6 +44,7 @@ router.get("/:id", async (req, res, next) => {
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+    console.log("Fetched task:", task._id, "status:", task.status, "result:", task.result);
     return res.json(task);
   } catch (error) {
     return next(error);
