@@ -3,10 +3,10 @@ import { env } from "./env.js";
 
 export async function connectDb() {
   mongoose.set("strictQuery", true);
-  const uri = env.mongoUri.includes("/?") || env.mongoUri.match(/\/[a-zA-Z0-9_]+\?/)
-    ? env.mongoUri
-    : env.mongoUri.replace(/\/$/, "") + "/aitasks";
+  let uri = env.mongoUri;
+  uri = uri.split("?")[0] + "/aitasks?retryWrites=true&w=majority";
+  console.log("Connecting to MongoDB:", uri.split("@")[0] + "@...");
   await mongoose.connect(uri, {
-    autoIndex: true
+    autoCreate: true
   });
 }
