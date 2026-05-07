@@ -80,10 +80,13 @@ def process_message(message_id, fields):
     append_log(task_id, f"Failed: {exc}")
 
 import threading
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 def run_worker():
+  print("Worker thread started. Connecting to Redis...", flush=True)
   ensure_group()
+  print("Worker connected to Redis stream. Listening for tasks...", flush=True)
   while True:
     try:
       resp = redis.xreadgroup(
@@ -97,10 +100,11 @@ def run_worker():
         continue
       for _, messages in resp:
         for message_id, fields in messages:
+          print(f"Received task: {message_id}", flush=True)
           process_message(message_id, fields)
           redis.xack(REDIS_STREAM, CONSUMER_GROUP, message_id)
     except Exception as exc:
-      print(f"Worker error: {exc}")
+      print(f"Worker error: {exc}", flush=True)
       time.sleep(3)
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
